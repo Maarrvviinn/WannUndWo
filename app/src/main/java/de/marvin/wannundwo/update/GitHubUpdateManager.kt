@@ -56,7 +56,7 @@ object GitHubUpdateManager {
 
             ReleaseInfo(
                 versionCode = versionCode,
-                versionName = json.optString("name", tagName),
+                versionName = tagName,
                 tagName = tagName,
                 apkUrl = apkUrl,
                 assetName = assetName.ifBlank { "WannUndWo-v$versionCode.apk" },

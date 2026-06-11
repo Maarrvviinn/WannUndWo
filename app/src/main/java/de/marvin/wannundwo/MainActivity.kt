@@ -41,7 +41,8 @@ import androidx.core.content.ContextCompat
 import androidx.navigation.compose.rememberNavController
 import de.marvin.wannundwo.data.UserPreferences
 import de.marvin.wannundwo.navigation.AppNavGraph
-import de.marvin.wannundwo.update.ApkInstaller
+import de.marvin.wannundwo.update.DownloadService
+import de.marvin.wannundwo.update.DownloadState
 import de.marvin.wannundwo.update.GitHubUpdateManager
 import de.marvin.wannundwo.update.ReleaseInfo
 import de.marvin.wannundwo.update.UpdateScreen
@@ -66,30 +67,9 @@ class MainActivity : ComponentActivity() {
             val context = LocalContext.current
             var isDarkMode by remember { mutableStateOf(initialDark) }
             var pendingUpdate by remember { mutableStateOf<ReleaseInfo?>(null) }
-            var activeDownload by remember { mutableStateOf<ReleaseInfo?>(null) }
-            var downloadProgress by remember { mutableFloatStateOf(-1f) }
-            var downloadDone by remember { mutableStateOf(false) }
-            var downloadError by remember { mutableStateOf<String?>(null) }
+            val downloadState by DownloadService.state.collectAsState()
 
             val scope = rememberCoroutineScope()
-
-            fun startDownload(release: ReleaseInfo) {
-                activeDownload = release
-                downloadProgress = -1f
-                downloadDone = false
-                downloadError = null
-                scope.launch {
-                    val apkFile = GitHubUpdateManager.downloadApk(context, release) { p ->
-                        downloadProgress = p
-                    }
-                    if (apkFile != null) {
-                        downloadDone = true
-                        ApkInstaller.install(context, apkFile)
-                    } else {
-                        downloadError = "Download der neuen APK fehlgeschlagen."
-                    }
-                }
-            }
 
             LaunchedEffect(Unit) {
                 pendingUpdate = GitHubUpdateManager.checkForUpdate(context, BuildConfig.VERSION_CODE)
@@ -105,14 +85,14 @@ class MainActivity : ComponentActivity() {
                         title = { androidx.compose.material3.Text("Neue Version verfügbar") },
                         text = {
                             androidx.compose.material3.Text(
-                                "Version ${release.versionName} (${release.tagName}) ist verfügbar. Die App bleibt nach dem Update eingeloggt."
+                                "Version ${release.tagName} ist verfügbar. Die App bleibt nach dem Update eingeloggt."
                             )
                         },
                         confirmButton = {
                             Button(onClick = {
                                 val toDownload = release
                                 pendingUpdate = null
-                                startDownload(toDownload)
+                                DownloadService.start(context, toDownload)
                             }) {
                                 androidx.compose.material3.Text("Installieren")
                             }
@@ -138,20 +118,28 @@ class MainActivity : ComponentActivity() {
                         )
 
                         // UpdateScreen overlay — shown during download/install
-                        if (activeDownload != null) {
-                            UpdateScreen(
-                                release = activeDownload!!,
-                                progress = downloadProgress,
-                                isDone = downloadDone,
-                                error = downloadError,
-                                onRetry = { startDownload(activeDownload!!) },
-                                onDismiss = {
-                                    activeDownload = null
-                                    downloadProgress = -1f
-                                    downloadDone = false
-                                    downloadError = null
-                                }
-                            )
+                        val ds = downloadState
+                        if (ds !is DownloadState.Idle) {
+                            val release = when (ds) {
+                                is DownloadState.Downloading -> ds.release
+                                is DownloadState.Installing -> ds.release
+                                is DownloadState.Error -> ds.release
+                                else -> null
+                            }
+                            if (release != null) {
+                                UpdateScreen(
+                                    release = release,
+                                    progress = when (ds) {
+                                        is DownloadState.Downloading -> ds.progress
+                                        is DownloadState.Installing -> 1f
+                                        else -> 0f
+                                    },
+                                    isDone = ds is DownloadState.Installing,
+                                    error = (ds as? DownloadState.Error)?.message,
+                                    onRetry = { DownloadService.start(context, release) },
+                                    onDismiss = { DownloadService.reset() }
+                                )
+                            }
                         }
 
                         // Offline banner — shown on top of all content
