@@ -35,11 +35,11 @@ jobs:
             echo "Missing ANDROID_KEYSTORE_BASE64 secret"
             exit 1
           fi
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > app/release-keystore.jks
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/app/release-keystore.jks"
 
       - name: Build release APK
         env:
-          ANDROID_KEYSTORE_FILE: app/release-keystore.jks
+          ANDROID_KEYSTORE_FILE: ${{ github.workspace }}/app/release-keystore.jks
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
