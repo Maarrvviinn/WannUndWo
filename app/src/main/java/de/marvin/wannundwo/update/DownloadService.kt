@@ -11,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -76,6 +77,11 @@ class DownloadService : Service() {
                 _state.value = DownloadState.Installing(release)
                 nm.notify(NOTIF_ID, buildDoneNotification(release.tagName))
                 ApkInstaller.install(this@DownloadService, file)
+                // Give the system installer ~2s to launch, then clear the overlay.
+                // Without this the UpdateScreen stays visible when the user returns
+                // from the installer and they get prompted again.
+                delay(2000)
+                _state.value = DownloadState.Idle
             } else {
                 _state.value = DownloadState.Error(release, "Download fehlgeschlagen")
                 nm.cancel(NOTIF_ID)

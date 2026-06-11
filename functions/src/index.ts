@@ -62,12 +62,22 @@ async function sendToUsers(
 
   const message: admin.messaging.MulticastMessage = {
     tokens,
-    // Data-only: no `notification` key so onMessageReceived always fires
-    // regardless of app state (foreground / background / killed).
+    // Include `notification` so Firebase auto-handles delivery in background/killed
+    // (reliable on all devices, no battery-opt issues).
+    // `android.notification.channelId` ensures the correct channel is used.
+    // `data` carries the abholungId for deep-link on tap, and title/body for
+    // onMessageReceived when the app is in the foreground.
+    notification: { title, body },
     data: { abholungId, title, body },
     android: {
       priority: "high",
-      ttl: 86400000, // 1 day in ms
+      ttl: 86400000,
+      notification: {
+        channelId: "wannundwo_notifications",
+        priority: "high",
+        defaultSound: true,
+        defaultVibrateTimings: true,
+      },
     },
   };
   await messaging.sendEachForMulticast(message);
