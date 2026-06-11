@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1041496263435",
+    "project_id": "wannundwo-5af81",
+    "storage_bucket": "wannundwo-5af81.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1041496263435:android:547f2a4911876c2b71f00e",
+        "android_client_info": {
+          "package_name": "de.marvin.wannundwo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDJrmuKgVRLhgNnHbZWptFK5a0JujwQFw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

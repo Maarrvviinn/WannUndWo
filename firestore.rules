@@ -1,0 +1,81 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: is the request from an authenticated user?
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Helper: is the caller a member of the given Haushalt?
+    function isMember(haushaltsId) {
+      return isAuth() && request.auth.uid in get(/databases/$(database)/documents/haushalte/$(haushaltsId)).data.memberIds;
+    }
+
+    // Helper: is the caller the admin of the given Haushalt?
+    function isAdmin(haushaltsId) {
+      return isAuth() && get(/databases/$(database)/documents/haushalte/$(haushaltsId)).data.adminId == request.auth.uid;
+    }
+
+    // Helper: authenticated caller's household id from users/{uid}
+    function myHaushaltsId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.haushaltsId;
+    }
+
+    // ── Haushalte ─────────────────────────────────────────────────────────────
+    match /haushalte/{haushaltsId} {
+      allow read: if isMember(haushaltsId);
+      allow create: if isAuth();
+      allow update: if isAdmin(haushaltsId);
+      allow delete: if isAdmin(haushaltsId);
+    }
+
+    // ── Users ─────────────────────────────────────────────────────────────────
+    match /users/{userId} {
+      // Read own user doc or users from same Haushalt
+      allow read: if isAuth() && (
+        request.auth.uid == userId ||
+        resource.data.haushaltsId == myHaushaltsId()
+      );
+      // Create limited to own doc or admin creating a member doc inside own Haushalt.
+      allow create: if isAuth() && (
+        request.auth.uid == userId ||
+        (
+          request.resource.data.haushaltsId == myHaushaltsId() &&
+          isAdmin(myHaushaltsId())
+        )
+      );
+
+      // Self-update for own profile fields.
+      allow update: if isAuth() && request.auth.uid == userId;
+
+      // Admin may update only permissions for users in same Haushalt.
+      allow update: if isAuth() &&
+        isAdmin(resource.data.haushaltsId) &&
+        resource.data.haushaltsId == myHaushaltsId() &&
+        request.resource.data.diff(resource.data).changedKeys().hasOnly(["permissions"]);
+
+      allow delete: if false;
+    }
+
+    // ── Abholungen ────────────────────────────────────────────────────────────
+    match /abholungen/{abholungId} {
+      allow read: if isAuth() && isMember(resource.data.haushaltsId);
+      allow create: if isAuth() &&
+        isMember(request.resource.data.haushaltsId) &&
+        request.resource.data.creatorId == request.auth.uid;
+      // Ownership rule: only the creator can modify/delete a pickup.
+      allow update: if isAuth() &&
+        resource.data.creatorId == request.auth.uid &&
+        request.resource.data.creatorId == resource.data.creatorId &&
+        request.resource.data.haushaltsId == resource.data.haushaltsId;
+      allow delete: if isAuth() && resource.data.creatorId == request.auth.uid;
+    }
+
+    // ── Notifications ─────────────────────────────────────────────────────────
+    match /notifications/{userId}/items/{notificationId} {
+      allow read, write: if isAuth() && request.auth.uid == userId;
+    }
+  }
+}

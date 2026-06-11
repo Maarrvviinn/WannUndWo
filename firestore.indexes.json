@@ -1,0 +1,22 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "abholungen",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "haushaltsId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "time", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "abholungen",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "haushaltsId", "order": "ASCENDING" },
+        { "fieldPath": "time", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
