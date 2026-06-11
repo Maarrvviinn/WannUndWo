@@ -5,7 +5,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -19,6 +18,27 @@ class WannUndWoMessagingService : FirebaseMessagingService() {
     companion object {
         const val CHANNEL_ID = "wannundwo_notifications"
         const val CHANNEL_NAME = "Wann & Wo"
+
+        /** Call this at app start so the channel always exists before any notification. */
+        fun ensureChannelExists(context: Context) {
+            val nm = context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            if (nm.getNotificationChannel(CHANNEL_ID) == null) {
+                val channel = NotificationChannel(
+                    CHANNEL_ID,
+                    CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Abholungen und Statusänderungen"
+                    enableVibration(true)
+                }
+                nm.createNotificationChannel(channel)
+            }
+        }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        ensureChannelExists(this)
     }
 
     override fun onNewToken(token: String) {
@@ -30,24 +50,28 @@ class WannUndWoMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
-        createNotificationChannel()
+        ensureChannelExists(this)
 
-        val title = message.notification?.title ?: message.data["title"] ?: "Wann & Wo"
-        val body = message.notification?.body ?: message.data["body"] ?: ""
+        // Always read from data payload so we control display in all app states.
+        // Cloud Functions send data-only messages (no notification key).
+        val title = message.data["title"] ?: message.notification?.title ?: "Wann & Wo"
+        val body  = message.data["body"]  ?: message.notification?.body  ?: ""
+        if (body.isBlank()) return
 
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             message.data["abholungId"]?.let { putExtra("abholungId", it) }
         }
         val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent,
-            PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+            this, System.currentTimeMillis().toInt(), intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -55,13 +79,5 @@ class WannUndWoMessagingService : FirebaseMessagingService() {
 
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(System.currentTimeMillis().toInt(), notification)
-    }
-
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH)
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
-        }
     }
 }

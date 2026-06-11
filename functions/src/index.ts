@@ -62,9 +62,13 @@ async function sendToUsers(
 
   const message: admin.messaging.MulticastMessage = {
     tokens,
-    notification: { title, body },
-    data: { abholungId },
-    android: { priority: "high" },
+    // Data-only: no `notification` key so onMessageReceived always fires
+    // regardless of app state (foreground / background / killed).
+    data: { abholungId, title, body },
+    android: {
+      priority: "high",
+      ttl: 86400000, // 1 day in ms
+    },
   };
   await messaging.sendEachForMulticast(message);
   return enabledUserIds;

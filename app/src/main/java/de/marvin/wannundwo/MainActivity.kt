@@ -47,6 +47,7 @@ import com.google.accompanist.permissions.rememberPermissionState
 import de.marvin.wannundwo.data.UserPreferences
 import de.marvin.wannundwo.navigation.AppNavGraph
 import de.marvin.wannundwo.navigation.Screen
+import de.marvin.wannundwo.service.WannUndWoMessagingService
 import de.marvin.wannundwo.update.DownloadService
 import de.marvin.wannundwo.update.DownloadState
 import de.marvin.wannundwo.update.GitHubUpdateManager
@@ -62,6 +63,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Create notification channel before any message can arrive
+        WannUndWoMessagingService.ensureChannelExists(this)
         val prefs = UserPreferences(this)
         val initialDark = runBlocking { prefs.isDarkMode.first() }
         setContent {
