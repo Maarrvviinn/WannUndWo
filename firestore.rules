@@ -27,7 +27,12 @@ service cloud.firestore {
     match /haushalte/{haushaltsId} {
       allow read: if isMember(haushaltsId);
       allow create: if isAuth();
+      // Admin may change anything.
       allow update: if isAdmin(haushaltsId);
+      // Members may update ONLY their own display-name entry inside memberNames.
+      allow update: if isMember(haushaltsId) &&
+        request.resource.data.diff(resource.data).changedKeys().hasOnly(["memberNames"]) &&
+        request.resource.data.memberNames.diff(resource.data.memberNames).changedKeys().hasOnly([request.auth.uid]);
       allow delete: if isAdmin(haushaltsId);
     }
 
@@ -65,9 +70,15 @@ service cloud.firestore {
       allow create: if isAuth() &&
         isMember(request.resource.data.haushaltsId) &&
         request.resource.data.creatorId == request.auth.uid;
-      // Ownership rule: only the creator can modify/delete a pickup.
+      // Creator can fully edit their own pickup.
       allow update: if isAuth() &&
         resource.data.creatorId == request.auth.uid &&
+        request.resource.data.creatorId == resource.data.creatorId &&
+        request.resource.data.haushaltsId == resource.data.haushaltsId;
+      // Any haushalt member can respond (only response fields may change).
+      allow update: if isAuth() &&
+        isMember(resource.data.haushaltsId) &&
+        request.resource.data.diff(resource.data).changedKeys().hasOnly(["status", "respondedBy", "responseNote", "respondedAt", "updatedAt"]) &&
         request.resource.data.creatorId == resource.data.creatorId &&
         request.resource.data.haushaltsId == resource.data.haushaltsId;
       allow delete: if isAuth() && resource.data.creatorId == request.auth.uid;

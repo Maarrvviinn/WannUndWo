@@ -13,7 +13,8 @@ data class ReleaseInfo(
     val versionName: String,
     val tagName: String,
     val apkUrl: String,
-    val assetName: String
+    val assetName: String,
+    val publishedAt: String = ""
 )
 
 object GitHubUpdateManager {
@@ -58,14 +59,19 @@ object GitHubUpdateManager {
                 versionName = json.optString("name", tagName),
                 tagName = tagName,
                 apkUrl = apkUrl,
-                assetName = assetName.ifBlank { "WannUndWo-v$versionCode.apk" }
+                assetName = assetName.ifBlank { "WannUndWo-v$versionCode.apk" },
+                publishedAt = json.optString("published_at", "")
             )
         } finally {
             request.disconnect()
         }
     }
 
-    suspend fun downloadApk(context: Context, releaseInfo: ReleaseInfo): File? = withContext(Dispatchers.IO) {
+    suspend fun downloadApk(
+        context: Context,
+        releaseInfo: ReleaseInfo,
+        onProgress: (Float) -> Unit = {}
+    ): File? = withContext(Dispatchers.IO) {
         val cacheDir = File(context.cacheDir, "updates").apply { mkdirs() }
         val targetFile = File(cacheDir, releaseInfo.assetName)
         val connection = URL(releaseInfo.apkUrl).openConnection() as HttpURLConnection
@@ -74,9 +80,24 @@ object GitHubUpdateManager {
             connection.readTimeout = 15_000
             if (connection.responseCode !in 200..299) return@withContext null
 
+            val contentLength = connection.contentLengthLong
+            var bytesRead = 0L
+            var lastReportedPct = -1
+            val buffer = ByteArray(8 * 1024)
             connection.inputStream.use { input ->
                 targetFile.outputStream().use { output ->
-                    input.copyTo(output)
+                    var n: Int
+                    while (input.read(buffer).also { n = it } != -1) {
+                        output.write(buffer, 0, n)
+                        bytesRead += n
+                        if (contentLength > 0) {
+                            val pct = ((bytesRead * 100) / contentLength).toInt()
+                            if (pct != lastReportedPct) {
+                                lastReportedPct = pct
+                                withContext(Dispatchers.Main) { onProgress(pct / 100f) }
+                            }
+                        }
+                    }
                 }
             }
             targetFile

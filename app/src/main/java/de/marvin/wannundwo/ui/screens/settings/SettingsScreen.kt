@@ -113,7 +113,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             val uid = auth.currentUser?.uid ?: return@launch
             val hId = haushaltsId.takeIf { it.isNotBlank() } ?: return@launch
-            haushaltRepo.updateMemberNameInHaushalt(hId, uid, newName)
+            try {
+                haushaltRepo.updateMemberNameInHaushalt(hId, uid, newName)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
         }
     }
 
