@@ -28,6 +28,10 @@ functions/firebase-debug.log
 keystore.properties
 signing.properties
 
+# Firebase config — contains API keys, never commit to public repos
+google-services.json
+GoogleService-Info.plist
+
 # Encoded secret exports
 *.b64
 

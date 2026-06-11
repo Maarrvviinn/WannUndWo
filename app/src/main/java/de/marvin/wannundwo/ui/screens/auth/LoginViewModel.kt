@@ -44,6 +44,16 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun register(email: String, password: String) {
+        viewModelScope.launch {
+            _uiState.value = LoginUiState(isLoading = true)
+            authRepo.register(email.trim(), password).fold(
+                onSuccess = { _uiState.value = LoginUiState(success = true) },
+                onFailure = { _uiState.value = LoginUiState(error = it.message ?: "Registrierung fehlgeschlagen") }
+            )
+        }
+    }
+
     fun sendPasswordReset(email: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
@@ -56,5 +66,9 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearResetSent() {
         _uiState.value = _uiState.value.copy(resetSent = false)
+    }
+
+    fun clearError() {
+        _uiState.value = _uiState.value.copy(error = null)
     }
 }

@@ -25,7 +25,9 @@ service cloud.firestore {
 
     // ── Haushalte ─────────────────────────────────────────────────────────────
     match /haushalte/{haushaltsId} {
-      allow read: if isMember(haushaltsId);
+      // Any authenticated user may read haushalte so they can look up a haushalt
+      // by invite code before joining.
+      allow read: if isAuth();
       allow create: if isAuth();
       // Admin may change anything.
       allow update: if isAdmin(haushaltsId);
@@ -33,6 +35,11 @@ service cloud.firestore {
       allow update: if isMember(haushaltsId) &&
         request.resource.data.diff(resource.data).changedKeys().hasOnly(["memberNames"]) &&
         request.resource.data.memberNames.diff(resource.data.memberNames).changedKeys().hasOnly([request.auth.uid]);
+      // A new user may join by adding only themselves to memberIds (+ their name to memberNames).
+      allow update: if isAuth() &&
+        !(request.auth.uid in resource.data.memberIds) &&
+        request.resource.data.diff(resource.data).changedKeys().hasOnly(["memberIds", "memberNames"]) &&
+        request.auth.uid in request.resource.data.memberIds;
       allow delete: if isAdmin(haushaltsId);
     }
 
