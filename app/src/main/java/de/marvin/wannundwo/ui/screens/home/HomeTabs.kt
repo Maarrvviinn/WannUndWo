@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,56 +38,67 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.abs
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnstehendeAbholungenTab(
     abholungen: List<Abholung>,
     members: List<User>,
     currentUser: User?,
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
     onDetail: (String) -> Unit,
     onEdit: (String) -> Unit,
     onDelete: (String) -> Unit,
     onRespond: (abholungId: String, status: AbholungStatus, note: String) -> Unit
 ) {
-    if (abholungen.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Keine Abholungen vorhanden", fontSize = 16.sp, textAlign = TextAlign.Center)
-        }
-        return
-    }
-
-    if (abholungen.size == 1) {
-        Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.TopCenter) {
-            val a = abholungen.first()
-            val canEdit = a.creatorId == currentUser?.id
-            val canDelete = a.creatorId == currentUser?.id
-            BigAbholungCard(
-                abholung = a,
-                members = members,
-                currentUserId = currentUser?.id ?: "",
-                onClick = { onDetail(a.id) },
-                onEdit = if (canEdit) { { onEdit(a.id) } } else null,
-                onDelete = if (canDelete) { { onDelete(a.id) } } else null,
-                onRespond = { status, note -> onRespond(a.id, status, note) }
-            )
-        }
-        return
-    }
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize()
     ) {
-        items(abholungen, key = { it.id }) { abholung ->
-            val canEdit = abholung.creatorId == currentUser?.id
-            val canDelete = abholung.creatorId == currentUser?.id
-            AbholungCard(
-                abholung = abholung,
-                members = members,
-                onClick = { onDetail(abholung.id) },
-                onEdit = if (canEdit) { { onEdit(abholung.id) } } else null,
-                onDelete = if (canDelete) { { onDelete(abholung.id) } } else null
-            )
+        when {
+            abholungen.isEmpty() -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Keine Abholungen vorhanden", fontSize = 16.sp, textAlign = TextAlign.Center)
+                }
+            }
+            abholungen.size == 1 -> {
+                Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.TopCenter) {
+                    val a = abholungen.first()
+                    val canEdit = a.creatorId == currentUser?.id
+                    val canDelete = a.creatorId == currentUser?.id
+                    BigAbholungCard(
+                        abholung = a,
+                        members = members,
+                        currentUserId = currentUser?.id ?: "",
+                        onClick = { onDetail(a.id) },
+                        onEdit = if (canEdit) { { onEdit(a.id) } } else null,
+                        onDelete = if (canDelete) { { onDelete(a.id) } } else null,
+                        onRespond = { status, note -> onRespond(a.id, status, note) }
+                    )
+                }
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(abholungen, key = { it.id }) { abholung ->
+                        val canEdit = abholung.creatorId == currentUser?.id
+                        val canDelete = abholung.creatorId == currentUser?.id
+                        AbholungCard(
+                            abholung = abholung,
+                            members = members,
+                            currentUserId = currentUser?.id ?: "",
+                            onClick = { onDetail(abholung.id) },
+                            onEdit = if (canEdit) { { onEdit(abholung.id) } } else null,
+                            onDelete = if (canDelete) { { onDelete(abholung.id) } } else null,
+                            onRespond = { status, note -> onRespond(abholung.id, status, note) }
+                        )
+                    }
+                }
+            }
         }
     }
 }

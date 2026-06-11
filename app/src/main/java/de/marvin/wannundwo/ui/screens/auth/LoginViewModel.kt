@@ -13,7 +13,8 @@ import kotlinx.coroutines.launch
 data class LoginUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
-    val success: Boolean = false
+    val success: Boolean = false,
+    val resetSent: Boolean = false
 )
 
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
@@ -41,5 +42,19 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 onFailure = { _uiState.value = LoginUiState(error = it.message ?: "Login fehlgeschlagen") }
             )
         }
+    }
+
+    fun sendPasswordReset(email: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            authRepo.sendPasswordReset(email.trim()).fold(
+                onSuccess = { _uiState.value = _uiState.value.copy(isLoading = false, resetSent = true) },
+                onFailure = { _uiState.value = _uiState.value.copy(isLoading = false, error = it.message ?: "Fehler beim Senden") }
+            )
+        }
+    }
+
+    fun clearResetSent() {
+        _uiState.value = _uiState.value.copy(resetSent = false)
     }
 }

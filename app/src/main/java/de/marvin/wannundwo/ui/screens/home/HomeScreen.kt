@@ -106,6 +106,8 @@ fun HomeScreen(
                     abholungen = uiState.abholungen,
                     members = uiState.members,
                     currentUser = uiState.currentUser,
+                    isRefreshing = uiState.isRefreshing,
+                    onRefresh = { vm.refresh() },
                     onDetail = onNavigateToDetail,
                     onEdit = onNavigateToEditAbholung,
                     onDelete = { vm.deleteAbholung(it) },

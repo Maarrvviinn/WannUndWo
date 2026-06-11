@@ -28,10 +28,46 @@ fun LoginScreen(
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var showResetDialog by remember { mutableStateOf(false) }
+    var resetEmail by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
 
-    LaunchedEffect(uiState.success) {
-        if (uiState.success) onLoginSuccess()
+    LaunchedEffect(uiState.success) { if (uiState.success) onLoginSuccess() }
+
+    if (uiState.resetSent) {
+        AlertDialog(
+            onDismissRequest = { vm.clearResetSent() },
+            title = { Text("E-Mail gesendet") },
+            text = { Text("Eine E-Mail zum Zurücksetzen des Passworts wurde an $resetEmail gesendet.") },
+            confirmButton = { TextButton(onClick = { vm.clearResetSent() }) { Text("OK") } }
+        )
+    }
+
+    if (showResetDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetDialog = false },
+            title = { Text("Passwort zurücksetzen") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Gib deine E-Mail-Adresse ein. Du erhältst einen Link zum Zurücksetzen.")
+                    OutlinedTextField(
+                        value = resetEmail,
+                        onValueChange = { resetEmail = it },
+                        label = { Text("E-Mail") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { vm.sendPasswordReset(resetEmail); showResetDialog = false },
+                    enabled = resetEmail.isNotBlank()
+                ) { Text("Senden") }
+            },
+            dismissButton = { TextButton(onClick = { showResetDialog = false }) { Text("Abbrechen") } }
+        )
     }
 
     Column(
@@ -104,6 +140,16 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(Modifier.height(32.dp))
+            TextButton(
+                onClick = {
+                    resetEmail = email
+                    showResetDialog = true
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Passwort vergessen?", color = MaterialTheme.colorScheme.primary)
+            }
+
+            Spacer(Modifier.height(16.dp))
     }
 }

@@ -13,6 +13,9 @@ import de.marvin.wannundwo.repository.AbholungRepository
 import de.marvin.wannundwo.repository.HaushaltRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -40,22 +43,31 @@ class AbholungDetailViewModel(app: Application) : AndroidViewModel(app) {
 
     fun load(abholungId: String) {
         viewModelScope.launch {
-            abholungRepo.observeAbholung(abholungId).collect { a ->
-                if (a == null) return@collect
-                val creator = haushaltRepo.getUser(a.creatorId)
-                val responded = if (a.respondedBy.isNotBlank()) haushaltRepo.getUser(a.respondedBy) else null
-                // Load all haushalt members for name resolution in change entries
-                val memberIds = (a.recipientIds + a.creatorId).distinct()
-                haushaltRepo.observeMembers(memberIds).collect { members ->
+            abholungRepo.observeAbholung(abholungId)
+                .filterNotNull()
+                .flatMapLatest { a ->
+                    val creator = haushaltRepo.getUser(a.creatorId)
+                    val responded = if (a.respondedBy.isNotBlank()) haushaltRepo.getUser(a.respondedBy) else null
+                    val memberIds = (a.recipientIds + a.creatorId).distinct()
+                    haushaltRepo.observeMembers(memberIds).map { members ->
+                        DetailUiState(
+                            abholung = a,
+                            creator = creator,
+                            respondedByUser = responded,
+                            recipients = members.filter { it.id in a.recipientIds },
+                            members = members
+                        )
+                    }
+                }
+                .collect { state ->
                     _uiState.value = _uiState.value.copy(
-                        abholung = a,
-                        creator = creator,
-                        respondedByUser = responded,
-                        recipients = members.filter { it.id in a.recipientIds },
-                        members = members
+                        abholung = state.abholung,
+                        creator = state.creator,
+                        respondedByUser = state.respondedByUser,
+                        recipients = state.recipients,
+                        members = state.members
                     )
                 }
-            }
         }
         viewModelScope.launch {
             abholungRepo.observeChanges(abholungId).collect { changes ->

@@ -38,4 +38,8 @@ class NotificationRepository {
         docs.forEach { batch.update(it.reference, "read", true) }
         batch.commit().await()
     }
+
+    suspend fun markRead(userId: String, notificationId: String) {
+        userCol(userId).document(notificationId).update("read", true).await()
+    }
 }

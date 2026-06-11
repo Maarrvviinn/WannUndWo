@@ -12,6 +12,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -136,6 +138,8 @@ fun HaushaltTab(
 
     // QR Code Dialog
     if (showQrCode && haushalt != null) {
+        val clipboard = LocalClipboardManager.current
+        var copied by remember { mutableStateOf(false) }
         Dialog(onDismissRequest = { showQrCode = false }) {
             Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface) {
                 Column(
@@ -153,7 +157,17 @@ fun HaushaltTab(
                             letterSpacing = 6.sp, color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
-                    TextButton(onClick = { showQrCode = false }) { Text("Schließen") }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = {
+                            clipboard.setText(AnnotatedString(haushalt.inviteCode))
+                            copied = true
+                        }) {
+                            Icon(if (copied) Icons.Default.Check else Icons.Default.ContentCopy, null, Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(if (copied) "Kopiert!" else "Code kopieren")
+                        }
+                        TextButton(onClick = { showQrCode = false }) { Text("Schließen") }
+                    }
                 }
             }
         }

@@ -1,5 +1,6 @@
 package de.marvin.wannundwo.ui.screens.notifications
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -41,11 +42,18 @@ class NotificationsViewModel : ViewModel() {
     fun markAllRead() {
         viewModelScope.launch { repo.markAllRead(userId) }
     }
+
+    fun markRead(notificationId: String) {
+        viewModelScope.launch { repo.markRead(userId, notificationId) }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationsScreen(onBack: () -> Unit) {
+fun NotificationsScreen(
+    onBack: () -> Unit,
+    onNavigateToDetail: (String) -> Unit = {}
+) {
     val vm: NotificationsViewModel = viewModel()
     val notifications by vm.notifications.collectAsState()
 
@@ -72,7 +80,13 @@ fun NotificationsScreen(onBack: () -> Unit) {
         } else {
             LazyColumn(modifier = Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(notifications, key = { it.id }) { n ->
-                    NotificationItem(n)
+                    NotificationItem(
+                        notification = n,
+                        onClick = {
+                            if (!n.read) vm.markRead(n.id)
+                            if (n.abholungId.isNotBlank()) onNavigateToDetail(n.abholungId)
+                        }
+                    )
                 }
             }
         }
@@ -80,12 +94,14 @@ fun NotificationsScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun NotificationItem(notification: AppNotification) {
+private fun NotificationItem(notification: AppNotification, onClick: () -> Unit) {
     val dateStr = remember(notification.createdAt) {
         SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.GERMAN).format(notification.createdAt.toDate())
     }
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = if (!notification.read) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
             else MaterialTheme.colorScheme.surface

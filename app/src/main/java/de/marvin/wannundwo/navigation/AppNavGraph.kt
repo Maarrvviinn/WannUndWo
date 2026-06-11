@@ -94,7 +94,12 @@ fun AppNavGraph(navController: NavHostController, isDarkMode: Boolean, onToggleT
         }
 
         composable(Screen.Notifications.route) {
-            NotificationsScreen(onBack = { navController.popBackStack() })
+            NotificationsScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToDetail = { id ->
+                    navController.navigate(Screen.AbholungDetail.createRoute(id))
+                }
+            )
         }
 
         composable(Screen.Settings.route) {

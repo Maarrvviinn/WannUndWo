@@ -23,7 +23,8 @@ data class HomeUiState(
     val members: List<User> = emptyList(),
     val currentUser: User? = null,
     val unreadCount: Int = 0,
-    val needsHaushalt: Boolean = false
+    val needsHaushalt: Boolean = false,
+    val isRefreshing: Boolean = false
 )
 
 class HomeViewModel : ViewModel() {
@@ -129,5 +130,13 @@ class HomeViewModel : ViewModel() {
 
     fun deleteAbholung(id: String) {
         viewModelScope.launch { abholungRepo.deleteAbholung(id) }
+    }
+
+    fun refresh() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isRefreshing = true)
+            kotlinx.coroutines.delay(800)
+            _uiState.value = _uiState.value.copy(isRefreshing = false)
+        }
     }
 }

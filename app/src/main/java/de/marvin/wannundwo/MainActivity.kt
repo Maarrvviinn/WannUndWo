@@ -41,6 +41,7 @@ import androidx.core.content.ContextCompat
 import androidx.navigation.compose.rememberNavController
 import de.marvin.wannundwo.data.UserPreferences
 import de.marvin.wannundwo.navigation.AppNavGraph
+import de.marvin.wannundwo.navigation.Screen
 import de.marvin.wannundwo.update.DownloadService
 import de.marvin.wannundwo.update.DownloadState
 import de.marvin.wannundwo.update.GitHubUpdateManager
@@ -79,6 +80,9 @@ class MainActivity : ComponentActivity() {
                 val isOnline by context.observeNetworkConnectivity()
                     .collectAsState(initial = true)
 
+                // Deep-link from FCM notification tap
+                val deepLinkId = remember { intent?.getStringExtra("abholungId") }
+
                 pendingUpdate?.let { release ->
                     AlertDialog(
                         onDismissRequest = { pendingUpdate = null },
@@ -108,6 +112,15 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         val navController = rememberNavController()
+
+                        // Navigate to detail when app launched via push notification
+                        LaunchedEffect(deepLinkId) {
+                            if (!deepLinkId.isNullOrBlank()) {
+                                navController.navigate(Screen.AbholungDetail.createRoute(deepLinkId)) {
+                                    launchSingleTop = true
+                                }
+                            }
+                        }
                         AppNavGraph(
                             navController = navController,
                             isDarkMode = isDarkMode,
