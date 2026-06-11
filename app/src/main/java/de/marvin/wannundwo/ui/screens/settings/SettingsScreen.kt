@@ -21,6 +21,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.auth.FirebaseAuth
+import de.marvin.wannundwo.BuildConfig
 import de.marvin.wannundwo.model.NotificationPreferences
 import de.marvin.wannundwo.data.SavedAccount
 import de.marvin.wannundwo.data.UserPreferences
@@ -131,6 +132,7 @@ fun SettingsScreen(
     val vm: SettingsViewModel = viewModel()
     val uiState by vm.uiState.collectAsState()
     val currentEmail = FirebaseAuth.getInstance().currentUser?.email ?: ""
+    val appVersionLabel = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
 
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showSwitchDialog by remember { mutableStateOf(false) }
@@ -305,6 +307,11 @@ fun SettingsScreen(
             }
 
             Spacer(Modifier.height(8.dp))
+            Text(
+                text = "App-Version: $appVersionLabel",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+            )
             Spacer(Modifier.weight(1f))
 
             OutlinedButton(
