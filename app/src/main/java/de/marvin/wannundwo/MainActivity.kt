@@ -44,9 +44,12 @@ import androidx.navigation.compose.rememberNavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
 import com.google.accompanist.permissions.rememberPermissionState
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.messaging.FirebaseMessaging
 import de.marvin.wannundwo.data.UserPreferences
 import de.marvin.wannundwo.navigation.AppNavGraph
 import de.marvin.wannundwo.navigation.Screen
+import de.marvin.wannundwo.repository.HaushaltRepository
 import de.marvin.wannundwo.service.WannUndWoMessagingService
 import de.marvin.wannundwo.update.DownloadService
 import de.marvin.wannundwo.update.DownloadState
@@ -58,6 +61,7 @@ import de.marvin.wannundwo.util.observeNetworkConnectivity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.tasks.await
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,6 +81,16 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(Unit) {
                 pendingUpdate = GitHubUpdateManager.checkForUpdate(context, BuildConfig.VERSION_CODE)
+                // Sync the FCM token to Firestore on every startup.
+                // onNewToken fires before login, so the token is often never saved.
+                // This ensures it's always current for the logged-in user.
+                val uid = FirebaseAuth.getInstance().currentUser?.uid
+                if (uid != null) {
+                    try {
+                        val token = FirebaseMessaging.getInstance().token.await()
+                        HaushaltRepository().updateUserFcmToken(uid, token)
+                    } catch (_: Exception) { /* non-fatal */ }
+                }
             }
 
             WannUndWoTheme(darkTheme = isDarkMode) {
